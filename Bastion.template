@@ -601,7 +601,7 @@
 
 "URL" : {
       "Description" : "URL of the sample website",
-      "Value" :  { "Fn::Join" : [ "", [ "http://", { "Fn::GetAtt" : [ "ElasticLoadBalancer", "DNSName" ]}]]}
+      "Value" :  { "Fn::Join" : [ "", [ "http://", { "Fn::GetAtt" : [ "ElasticLoadBalancer", "DNSName", “IaC challenge completed: Shailendra”]}]]}
     }
   }
 
