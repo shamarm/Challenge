@@ -41,6 +41,11 @@
       "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores."
     },
 
+
+"S3DNSName" : {
+      "Type" : "String",
+      "Description" : "The DNS name of an existing S3 bucket to use as the Cloudfront distribution origin"
+    },
 	
 	
 	"BastionInstanceType" : {
@@ -57,6 +62,58 @@
       "Type" : "String",
       "Description" : "VpcId of your existing Virtual Private Cloud (VPC)"
     },
+    
+    "myDBEC2SecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Frontend Access",
+        "VpcId"            : { "Fn::FindInMap" : [ "VPC", "single-vpc-pub-priv", "Id" ] },
+        "SecurityGroupIngress" : [{
+          "IpProtocol" : "tcp",
+          "FromPort"   : 5432,
+          "ToPort"     : 5432,
+          "CidrIp"     : "10.0.0.0/16"
+        }]
+      }
+    },
+ 
+    "myDBParamGroup": {
+        "Type": "AWS::RDS::DBParameterGroup",
+        "Properties": {
+            "Description": "Database Parameter Group + pg_stat_statements",
+            "Family": "postgres9.4",
+             "Parameters": {
+                "shared_preload_libraries": "pg_stat_statements"
+            }
+        }
+    },
+ 
+    "myDBSubnetGroup" : {
+      "Type" : "AWS::RDS::DBSubnetGroup",
+      "Properties" : {
+         "DBSubnetGroupDescription" : "DB Private Subnet",
+         "SubnetIds" : [
+          { "Fn::FindInMap" : [ "Subnets", "private-subnet", "PrivateSubnet2b" ] },
+          { "Fn::FindInMap" : [ "Subnets", "private-subnet", "PrivateSubnet2c" ] }
+         ]
+      }
+    },
+ 
+    "pgDB" : {
+      "Type" : "AWS::RDS::DBInstance",
+      "Properties" : {
+        "DBName" : { "Ref" : "DBName" },
+        "AllocatedStorage" : { "Ref" : "DBAllocatedStorage" },
+        "DBInstanceClass" : { "Ref" : "DBClass" },
+        "Engine" : "postgres",
+        "MasterUsername" : { "Ref" : "DBUsername" } ,
+        "MasterUserPassword" : { "Ref" : "DBPassword" },
+        "DBSubnetGroupName" : { "Ref" : "myDBSubnetGroup" },
+        "DBParameterGroupName" : {"Ref" : "myDBParamGroup" },
+        "VPCSecurityGroups" : [ { "Fn::GetAtt" : [ "myDBEC2SecurityGroup", "GroupId" ] } ]
+      }
+    }
+  },
 
 	"Mappings" : {
     "AWSInstanceType2Arch" : {
@@ -75,6 +132,20 @@
       "us-west-1"      : { "64" : "ami-c08dbc85" }
     }
   },
+  
+  "VPC" : {
+      "single-vpc-pub-priv" : { "Id" : "vpc-1234" }
+    },
+    "Subnets" : {
+      "private-subnet" : {
+        "PrivateSubnet2b" : "subnet-b1234",
+        "PrivateSubnet2c" : "subnet-c1234"
+      },
+      "public-subnet" : {
+        "PublicSubnet2b" : "subnet-b123456",
+        "PublicSubnet2c" : "subnet-c123456"
+      }
+    }
 	
 	
 	"Resources" : {
@@ -384,9 +455,6 @@
     },
 	
 	
-	
-	
-	
 	"BastionHostAutoSacleGroup" : {
 	"Type" : "AWS::AutoScaling::AutoScalingGroup",
       "Type" : "AWS::EC2::Instance",
@@ -398,6 +466,17 @@
         "MaxSize" : "1",
 		
 		},
+		
+		
+	"myDistribution" : {
+      "Type" : "AWS::CloudFront::Distribution",
+      "Properties" : {
+         "DistributionConfig" : {
+           "S3Origin" : {"DNSName": { "Ref" : "S3DNSName" }},       
+           "Enabled" : "true"
+         }
+      }
+    } ,
 		
 		
 		"LaunchConfigBastion" : {
@@ -440,8 +519,6 @@
     }
   },
 	
-	
-  },
   
   
   "IPAddress" : {
@@ -453,6 +530,61 @@
       "Properties" : {
         "InstanceId" : { "Ref" : "LaunchConfigBastion" },
         "EIP" : { "Ref" : "IPAddress" }
+      }
+    }
+  },
+  
+  
+  "Resources" : {
+ 
+    "myDBEC2SecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Frontend Access",
+        "VpcId"            : { "Fn::FindInMap" : [ "VPC", "single-vpc-pub-priv", "Id" ] },
+        "SecurityGroupIngress" : [{
+          "IpProtocol" : "tcp",
+          "FromPort"   : 5432,
+          "ToPort"     : 5432,
+          "CidrIp"     : "10.0.0.0/16"
+        }]
+      }
+    },
+ 
+    "myDBParamGroup": {
+        "Type": "AWS::RDS::DBParameterGroup",
+        "Properties": {
+            "Description": "Database Parameter Group + pg_stat_statements",
+            "Family": "postgres9.4",
+             "Parameters": {
+                "shared_preload_libraries": "pg_stat_statements"
+            }
+        }
+    },
+ 
+    "myDBSubnetGroup" : {
+      "Type" : "AWS::RDS::DBSubnetGroup",
+      "Properties" : {
+         "DBSubnetGroupDescription" : "DB Private Subnet",
+         "SubnetIds" : [
+          { "Fn::FindInMap" : [ "Subnets", "private-subnet", "PrivateSubnet2b" ] },
+          { "Fn::FindInMap" : [ "Subnets", "private-subnet", "PrivateSubnet2c" ] }
+         ]
+      }
+    },
+ 
+    "pgDB" : {
+      "Type" : "AWS::RDS::DBInstance",
+      "Properties" : {
+        "DBName" : { "Ref" : "DBName" },
+        "AllocatedStorage" : { "Ref" : "DBAllocatedStorage" },
+        "DBInstanceClass" : { "Ref" : "DBClass" },
+        "Engine" : "postgres",
+        "MasterUsername" : { "Ref" : "DBUsername" } ,
+        "MasterUserPassword" : { "Ref" : "DBPassword" },
+        "DBSubnetGroupName" : { "Ref" : "myDBSubnetGroup" },
+        "DBParameterGroupName" : {"Ref" : "myDBParamGroup" },
+        "VPCSecurityGroups" : [ { "Fn::GetAtt" : [ "myDBEC2SecurityGroup", "GroupId" ] } ]
       }
     }
   },
