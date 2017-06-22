@@ -457,3 +457,21 @@
       }
     }
   },
+  
+  
+  "Outputs" : {
+    "InstanceId" : {
+      "Value" : { "Ref" : "Ec2Instance" }
+    },
+    "InstanceIPAddress" : {
+      "Value" : { "Ref" : "IPAddress" }
+    }
+  }
+
+"URL" : {
+      "Description" : "URL of the sample website",
+      "Value" :  { "Fn::Join" : [ "", [ "http://", { "Fn::GetAtt" : [ "ElasticLoadBalancer", "DNSName" ]}]]}
+    }
+  }
+
+}
